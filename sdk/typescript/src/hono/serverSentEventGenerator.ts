@@ -44,7 +44,10 @@ export class ServerSentEventGenerator extends AbstractSSEGenerator {
     c: Context,
     onStart: (stream: ServerSentEventGenerator) => Promise<void> | void,
     options?: Partial<{
-      onError: (stream: ServerSentEventGenerator, error: unknown) => Promise<void> | void;
+      onError: (
+        stream: ServerSentEventGenerator,
+        error: unknown,
+      ) => Promise<void> | void;
       onAbort: (reason: string) => Promise<void> | void;
     }>,
   ): Response {
@@ -56,8 +59,10 @@ export class ServerSentEventGenerator extends AbstractSSEGenerator {
       } catch (error) {
         const abortResult = options?.onAbort
           ? options.onAbort(
-              error instanceof Error ? error.message : "onStart callback threw an error"
-            )
+            error instanceof Error
+              ? error.message
+              : "onStart callback threw an error",
+          )
           : null;
         if (abortResult instanceof Promise) await abortResult;
         if (options?.onError) {
@@ -88,17 +93,17 @@ export class ServerSentEventGenerator extends AbstractSSEGenerator {
   /**
    * Reads client sent signals based on HTTP methods
    *
-   * @params request - The HTTP Request object.
+   * @params c - The Hono Context object.
    *
    * @returns An object containing a success boolean and either the client's signals or an error message.
    */
-  static async readSignals(request: Request): Promise<
+  static async readSignals(c: Context): Promise<
     | { success: true; signals: Record<string, Jsonifiable> }
     | { success: false; error: string }
   > {
     try {
-      if (request.method === "GET") {
-        const url = new URL(request.url);
+      if (c.req.method === "GET") {
+        const url = new URL(c.req.url);
         const params = url.searchParams;
         if (params.has("datastar")) {
           const signals = JSON.parse(params.get("datastar")!);
@@ -111,7 +116,7 @@ export class ServerSentEventGenerator extends AbstractSSEGenerator {
         throw new Error("No datastar object in request");
       }
 
-      const signals = await request.json();
+      const signals = await c.req.json();
 
       if (isRecord(signals)) {
         return { success: true, signals: signals };
