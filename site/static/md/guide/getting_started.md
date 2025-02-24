@@ -19,7 +19,7 @@ With Datastar, you can build any UI that a full-stack framework like React, Vue.
 The quickest way to use Datastar is to include it in your HTML using a script tag hosted on a CDN.
 
 ```html
-<script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-beta.5/bundles/datastar.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-beta.7/bundles/datastar.js"></script>
 ```
 
 If you prefer to host the file yourself, download your own bundle using the [bundler](/bundler), then include it from the appropriate path.
@@ -123,7 +123,7 @@ The [`data-computed`](/reference/attribute_plugins#data-computed) attribute crea
     <div data-text="$repeated">
         Will be replaced with the contents of the repeated signal
     </div>
-</div>>
+</div>
 ```
 
 This results in the `$repeated` signal's value always being equal to the value of the `$input` signal repeated twice. Computed signals are useful for memoizing expressions containing other signals.
@@ -198,7 +198,7 @@ If the expression evaluates to `true`, the `hidden` class is added to the elemen
 The `data-class` attribute can also be used to add or remove multiple classes from an element using a set of key-value pairs, where the keys represent class names and the values represent expressions.
 
 ```html
-<button data-class="{hidden: $input == '', bold: $input == 1}">Save</button>
+<button data-class="{hidden: $input == '', 'font-bold': $input == 1}">Save</button>
 ```
 
 ### `data-attr`
@@ -347,21 +347,21 @@ With our backend in place, we can now use the `data-on-click` attribute to trigg
 ```html
 <div
   data-signals="{response: '', answer: ''}"
-  data-computed-correct="$response.toLowerCase() == answer"
+  data-computed-correct="$response.toLowerCase() == $answer"
 >
   <div id="question"></div>
   <button data-on-click="@get('/actions/quiz')">Fetch a question</button>
   <button
-    data-show="answer != ''"
+    data-show="$answer != ''"
     data-on-click="$response = prompt('Answer:') ?? ''"
   >
     BUZZ
   </button>
   <div data-show="$response != ''">
     You answered “<span data-text="$response"></span>”.
-    <span data-show="correct">That is correct ✅</span>
-    <span data-show="!correct">
-      The correct answer is “<span data-text="answer"></span>” 🤷
+    <span data-show="$correct">That is correct ✅</span>
+    <span data-show="!$correct">
+      The correct answer is “<span data-text="$answer"></span>” 🤷
     </span>
   </div>
 </div>

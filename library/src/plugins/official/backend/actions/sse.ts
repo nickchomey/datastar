@@ -132,7 +132,7 @@ export const sse = async (
             argLines = []
             argsRawLines[key] = argLines
           }
-          const value = line.slice(colonIndex + 1).trim()
+          const value = line.slice(colonIndex + 1)
           argLines.push(value)
         }
 
@@ -142,7 +142,6 @@ export const sse = async (
         }
 
         // if you aren't seeing your event you can debug by using this line in the console
-        // document.addEventListener("datastar-sse",(e) => console.log(e));
         dispatchSSE(type, argsRaw)
       },
       onerror: (error) => {
