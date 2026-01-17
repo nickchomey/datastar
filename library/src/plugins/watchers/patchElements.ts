@@ -326,15 +326,29 @@ const morphChildren = (
         // if the node to morph is not at the insertion point then remove/move up to it
         if (bestMatch !== insertionPoint) {
           let cursor: Node | null = insertionPoint
-          // Remove nodes between the start and end nodes
+          // Remove nodes between the start and end nodes (but preserve ignore-morph nodes)
           while (cursor && cursor !== bestMatch) {
             const tempNode = cursor
             cursor = cursor.nextSibling
             removeNode(tempNode)
           }
         }
+        // Scripts: already executed, skip morphing entirely
+        if (bestMatch instanceof Element && bestMatch.tagName === 'SCRIPT') {
+          insertionPoint = bestMatch.nextSibling
+          continue
+        }
         morphNode(bestMatch, newChild)
+        // Skip past any preserved (ignore-morph) nodes after the matched node
         insertionPoint = bestMatch.nextSibling
+        while (
+          insertionPoint &&
+          insertionPoint !== endPoint &&
+          insertionPoint instanceof Element &&
+          insertionPoint.hasAttribute(aliasedIgnoreMorph)
+        ) {
+          insertionPoint = insertionPoint.nextSibling
+        }
         continue
       }
     }
@@ -480,16 +494,27 @@ const findBestMatch = (
 const isSoftMatch = (oldNode: Node, newNode: Node): boolean =>
   oldNode.nodeType === newNode.nodeType &&
   (oldNode as Element).tagName === (newNode as Element).tagName &&
-  // If oldElt has an `id` with possible state and it doesn’t match newElt.id then avoid morphing.
-  // We'll still match an anonymous node with an IDed newElt, though, because if it got this far,
-  // its not persistent, and new nodes can't have any hidden state.
-  (!(oldNode as Element).id ||
-    (oldNode as Element).id === (newNode as Element).id)
+  // Don't match elements with ignore-morph attribute
+  !((oldNode as Element).hasAttribute?.(aliasedIgnoreMorph)) &&
+  // Scripts: match by ID or content (src/text) to prevent duplicate execution
+  ((oldNode as Element).tagName === 'SCRIPT'
+    ? ((oldNode as Element).id && (oldNode as Element).id === (newNode as Element).id) ||
+      ((oldNode as HTMLScriptElement).src || (newNode as HTMLScriptElement).src
+        ? (oldNode as HTMLScriptElement).src === (newNode as HTMLScriptElement).src
+        : (oldNode as HTMLScriptElement).text === (newNode as HTMLScriptElement).text)
+    // Non-scripts: match if no old ID or IDs match
+    : (!(oldNode as Element).id || (oldNode as Element).id === (newNode as Element).id))
 
 // Gets rid of an unwanted DOM node; strategy depends on nature of its reuse:
+// - Nodes with ignore-morph attribute are preserved (not removed)
 // - Persistent nodes will be moved to the pantry for later reuse
 // - Other nodes will have their hooks called, and then are removed
 const removeNode = (node: Node): void => {
+  // Scripts: never remove (execution effects persist regardless)
+  // Ignore-morph: preserve explicitly marked nodes
+  if (node instanceof Element && (node.tagName === 'SCRIPT' || node.hasAttribute(aliasedIgnoreMorph))) {
+    return
+  }
   // are we going to id set match this later?
   ctxIdMap.has(node)
     ? // skip callbacks and move to pantry
