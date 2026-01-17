@@ -228,6 +228,7 @@ ctxPantry.hidden = true
 
 const aliasedIgnoreMorph = aliasify('ignore-morph')
 const aliasedIgnoreMorphAttr = `[${aliasedIgnoreMorph}]`
+
 const morph = (
   oldElt: Element | ShadowRoot,
   newContent: DocumentFragment | Element,
@@ -326,7 +327,7 @@ const morphChildren = (
         // if the node to morph is not at the insertion point then remove/move up to it
         if (bestMatch !== insertionPoint) {
           let cursor: Node | null = insertionPoint
-          // Remove nodes between the start and end nodes
+          // Remove nodes between the start and end nodes (but preserve ignore-morph nodes)
           while (cursor && cursor !== bestMatch) {
             const tempNode = cursor
             cursor = cursor.nextSibling
@@ -334,7 +335,16 @@ const morphChildren = (
           }
         }
         morphNode(bestMatch, newChild)
+        // Skip past any preserved (ignore-morph) nodes after the matched node
         insertionPoint = bestMatch.nextSibling
+        while (
+          insertionPoint &&
+          insertionPoint !== endPoint &&
+          insertionPoint instanceof Element &&
+          insertionPoint.hasAttribute(aliasedIgnoreMorph)
+        ) {
+          insertionPoint = insertionPoint.nextSibling
+        }
         continue
       }
     }
@@ -487,9 +497,14 @@ const isSoftMatch = (oldNode: Node, newNode: Node): boolean =>
     (oldNode as Element).id === (newNode as Element).id)
 
 // Gets rid of an unwanted DOM node; strategy depends on nature of its reuse:
+// - Nodes with ignore-morph attribute are preserved (not removed)
 // - Persistent nodes will be moved to the pantry for later reuse
 // - Other nodes will have their hooks called, and then are removed
 const removeNode = (node: Node): void => {
+  // Check if this node should be preserved due to ignore-morph
+  if (node instanceof Element && node.hasAttribute(aliasedIgnoreMorph)) {
+    return // Do not remove nodes with ignore-morph attribute
+  }
   // are we going to id set match this later?
   ctxIdMap.has(node)
     ? // skip callbacks and move to pantry
